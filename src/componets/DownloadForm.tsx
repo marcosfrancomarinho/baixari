@@ -19,9 +19,9 @@ export const DownloadForm: React.FC = () => {
 
   const handleDownload = async () => {
     try {
+      const baseUrl = import.meta.env.VITE_API_URL || '';
       if (!number || number.trim().length === 0) throw new Error('Informe o número');
-      const url =
-        type === 'protocolo' ? `http://localhost:3000/protocol/${number}` : `http://localhost:3000/certificate/${number}`;
+      const url = type === 'protocolo' ? `${baseUrl}/protocol/${number}` : `${baseUrl}/certificate/${number}`;
       setLoading(true);
       const response = await fetch(url);
       if (!response.ok) throw new Error(await getErrorMessage(response));

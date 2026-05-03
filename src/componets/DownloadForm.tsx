@@ -98,8 +98,10 @@ export const DownloadForm: React.FC = () => {
         <button
           onClick={handleDownload}
           disabled={!number.trim() || loading}
-          className='bg-black text-white py-2 font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors'
+          className='bg-black text-white py-2 font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2'
         >
+          {loading && <span className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />}
+
           {loading ? 'Baixando...' : 'Baixar arquivo'}
         </button>
       </div>

@@ -2,18 +2,48 @@ import React, { useState } from 'react';
 import { Alert } from './Alert';
 
 type DocumentType = 'protocolo' | 'certidao';
+type DownloadFormat = 'zip' | 'pdf';
 
 const getErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const data = await response.json();
-    return data.error || 'Erro ao baixar o arquivo';
-  } catch {
-    return (await response.text()) || 'Erro ao baixar o arquivo';
+  const contentType = response.headers.get('content-type') ?? '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      const data = (await response.json()) as { error?: string; message?: string };
+      return data.error || data.message || 'Erro ao baixar o arquivo';
+    } catch {
+      return 'Erro ao baixar o arquivo';
+    }
   }
+
+  return (await response.text()) || 'Erro ao baixar o arquivo';
+};
+
+const getFilename = (
+  response: Response,
+  type: DocumentType,
+  number: string,
+  format: DownloadFormat,
+): string => {
+  const contentDisposition = response.headers.get('content-disposition');
+  const encodedFilename = contentDisposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const plainFilename = contentDisposition?.match(/filename="?([^";]+)"?/i)?.[1];
+  const headerFilename = encodedFilename || plainFilename;
+
+  if (headerFilename) {
+    try {
+      return decodeURIComponent(headerFilename);
+    } catch {
+      return headerFilename;
+    }
+  }
+
+  return `${type}-${number}.${format}`;
 };
 
 export const DownloadForm: React.FC = () => {
   const [type, setType] = useState<DocumentType>('protocolo');
+  const [format, setFormat] = useState<DownloadFormat>('zip');
   const [number, setNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
@@ -30,11 +60,8 @@ export const DownloadForm: React.FC = () => {
 
     try {
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const endpoint =
-        type === 'protocolo'
-          ? `${baseUrl}/protocol/${encodeURIComponent(trimmed)}`
-          : `${baseUrl}/certificate/${encodeURIComponent(trimmed)}`;
-
+      const resource = type === 'protocolo' ? 'protocol' : 'certificate';
+      const endpoint = `${baseUrl}/${resource}/${encodeURIComponent(trimmed)}?format=${format}`;
       const response = await fetch(endpoint);
 
       if (!response.ok) {
@@ -42,18 +69,21 @@ export const DownloadForm: React.FC = () => {
       }
 
       const blob = await response.blob();
-      const filename = `${type}-${trimmed}.zip`;
-
+      const filename = getFilename(response, type, trimmed, format);
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
+
       link.href = objectUrl;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      link.remove();
       setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
 
-      setAlert({ message: 'Download iniciado com sucesso', type: 'success' });
+      setAlert({
+        message: `Download em ${format.toUpperCase()} iniciado com sucesso`,
+        type: 'success',
+      });
     } catch (error) {
       setAlert({
         message: error instanceof Error ? error.message : 'Erro ao baixar arquivo',
@@ -64,8 +94,10 @@ export const DownloadForm: React.FC = () => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !loading && number.trim()) handleDownload();
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' && !loading && number.trim()) {
+      void handleDownload();
+    }
   };
 
   return (
@@ -75,34 +107,68 @@ export const DownloadForm: React.FC = () => {
 
         {alert && <Alert message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
 
-        <input
-          type='text'
-          placeholder='Informe o número'
-          value={number}
-          onChange={(e) => setNumber(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={loading}
-          className='border border-gray-400 px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed'
-        />
+        <label className='flex flex-col gap-1'>
+          <span className='text-sm font-medium'>Número</span>
+          <input
+            type='text'
+            placeholder='Informe o número'
+            value={number}
+            onChange={(event) => setNumber(event.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={loading}
+            className='border border-gray-400 px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed'
+          />
+        </label>
 
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value as DocumentType)}
-          disabled={loading}
-          className='border border-gray-400 px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed'
-        >
-          <option value='protocolo'>Protocolo</option>
-          <option value='certidao'>Certidão</option>
-        </select>
+        <label className='flex flex-col gap-1'>
+          <span className='text-sm font-medium'>Tipo de documento</span>
+          <select
+            value={type}
+            onChange={(event) => setType(event.target.value as DocumentType)}
+            disabled={loading}
+            className='border border-gray-400 px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed'
+          >
+            <option value='protocolo'>Protocolo</option>
+            <option value='certidao'>Certidão</option>
+          </select>
+        </label>
+
+        <fieldset className='flex flex-col gap-2' disabled={loading}>
+          <legend className='text-sm font-medium mb-1'>Formato do download</legend>
+          <div className='grid grid-cols-2 gap-2'>
+            {(['zip', 'pdf'] as const).map((option) => (
+              <label
+                key={option}
+                className={`border px-3 py-2 text-center cursor-pointer transition-colors ${
+                  format === option
+                    ? 'border-black bg-black text-white'
+                    : 'border-gray-400 bg-white text-black'
+                } ${loading ? 'cursor-not-allowed opacity-60' : ''}`}
+              >
+                <input
+                  type='radio'
+                  name='format'
+                  value={option}
+                  checked={format === option}
+                  onChange={() => setFormat(option)}
+                  className='sr-only'
+                />
+                {option.toUpperCase()}
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         <button
-          onClick={handleDownload}
+          onClick={() => void handleDownload()}
           disabled={!number.trim() || loading}
           className='bg-black text-white py-2 font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2'
         >
-          {loading && <span className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />}
+          {loading && (
+            <span className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />
+          )}
 
-          {loading ? 'Baixando...' : 'Baixar arquivo'}
+          {loading ? 'Baixando...' : `Baixar ${format.toUpperCase()}`}
         </button>
       </div>
     </div>

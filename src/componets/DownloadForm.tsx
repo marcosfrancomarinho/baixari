@@ -128,7 +128,7 @@ export const DownloadForm: React.FC = () => {
             disabled={loading}
             className='border border-gray-400 px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed'
           >
-            <option value='protocolo'>Protocolo</option>
+            <option value='protocolo'>Pedido do protocolo</option>
             <option value='certidao'>Certidão</option>
           </select>
         </label>

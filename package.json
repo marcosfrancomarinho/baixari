@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
+    "docx": "^9.7.1",
     "express": "^5.2.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

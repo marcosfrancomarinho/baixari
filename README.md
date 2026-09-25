@@ -93,11 +93,11 @@ src/
 │   └── pdf-converter.ts
 ├── modules/
 │   └── pdf-converter/
-│       ├── domain/
-│       │   └── pdf-conversion.ts
 │       ├── application/
 │       │   ├── contracts/
 │       │   │   └── pdf-conversion.gateway.ts
+│       │   ├── model/
+│       │   │   └── pdf-conversion.ts
 │       │   └── usecases/
 │       │       └── convert-files-to-pdf.usecase.ts
 │       └── infra/

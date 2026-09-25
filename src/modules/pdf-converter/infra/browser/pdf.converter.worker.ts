@@ -3,7 +3,7 @@ import type {
   PdfConversionPhase,
   PdfConversionProgress,
   PdfSourceFile,
-} from '../../domain/pdf-conversion';
+} from '../../application/model/pdf-conversion';
 import {
   detectDocumentKind,
   readImageDimensions,

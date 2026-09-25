@@ -16,7 +16,7 @@ function savePdf(blob: Blob, filename: string) {
   link.click();
   link.remove();
 
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  setTimeout(() => URL.revokeObjectURL(url), 5_000);
 }
 
 function toSourceFiles(files: readonly File[]): PdfSourceFile[] {

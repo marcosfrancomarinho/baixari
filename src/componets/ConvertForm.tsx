@@ -3,7 +3,7 @@ import { convertFilesToPdfUseCase } from '../di/pdf-converter';
 import type {
   PdfConversionProgress,
   PdfSourceFile,
-} from '../modules/pdf-converter/domain/pdf-conversion';
+} from '../modules/pdf-converter/application/model/pdf-conversion';
 import { Alert } from './Alert';
 
 function savePdf(blob: Blob, filename: string) {

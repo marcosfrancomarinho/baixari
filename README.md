@@ -19,7 +19,7 @@ O **BaixaRI** simplifica a consulta e o download de documentos organizados por n
 
 ZIP e PDF de protocolos/certidões são recebidos prontos da API. Para DOCX, o frontend acompanha a extração de cada página em tempo real e cria o Word no navegador.
 
-Na aba **Converter para PDF**, arquivos PDF, JPG, JPEG e PNG são processados inteiramente no navegador. Eles não são enviados ao backend.
+Na aba **Converter para PDF**, arquivos PDF, JPG, JPEG e PNG são processados inteiramente no navegador. Arquivos com extensões numéricas como `.001`, `.002` e `.003` também são aceitos quando a assinatura interna identifica uma imagem válida. Eles não são enviados ao backend.
 
 ## Funcionalidades
 
@@ -29,9 +29,11 @@ Na aba **Converter para PDF**, arquivos PDF, JPG, JPEG e PNG são processados in
 - criação de Word no navegador com `docx`;
 - seleção, reordenação e remoção de vários arquivos;
 - união de PDFs no navegador com `pdf-lib`;
-- conversão de JPG/JPEG/PNG para PDF;
-- normalização de imagens com fundo branco, limite de 40 MP e lado máximo de 3000 px;
-- progresso por arquivo e cancelamento com `AbortController`;
+- conversão de JPG/JPEG/PNG para PDF mesmo quando a extensão é `.001`, `.002`, `.003` ou outra;
+- identificação do formato pelo conteúdo real do arquivo;
+- normalização de imagens com fundo branco, limite de 40 MP, lado máximo de 3000 px e até 8 MP no canvas de trabalho;
+- processamento sequencial em Web Worker para reduzir o pico de memória e manter a interface responsiva;
+- progresso percentual por arquivo e cancelamento imediato encerrando o Worker;
 - nenhum upload ao servidor durante a conversão de arquivos locais;
 - interface responsiva com Tailwind CSS.
 
@@ -45,22 +47,26 @@ flowchart TD
     C -->|DOCX| E["Texto via NDJSON"]
     E --> F["Word criado no navegador"]
 
-    G["PDF/JPG/PNG local"] --> H["Conversão no navegador"]
-    H --> I["pdf-lib"]
-    I --> J["documentos.pdf"]
+    G["Arquivo local: PDF/JPG/PNG/.001/.002/..."] --> H["ConvertFilesToPdfUseCase"]
+    H --> I["PdfConversionGateway"]
+    I --> J["BrowserPdfConversionGateway"]
+    J --> K["Web Worker + pdf-lib"]
+    K --> L["documentos.pdf"]
 ```
 
 ## Conversão local para PDF
 
 A conversão não usa `VITE_API_URL` e não chama uma rota de upload.
 
-1. O frontend identifica PDF, PNG ou JPEG pela assinatura do arquivo.
-2. PDFs têm suas páginas copiadas para o documento final.
-3. Imagens são redimensionadas quando necessário, recebem fundo branco e são convertidas para JPEG.
-4. O `pdf-lib` monta o PDF respeitando a ordem escolhida.
-5. O navegador inicia o download de `documentos.pdf`.
+1. A apresentação chama apenas o `ConvertFilesToPdfUseCase`.
+2. O caso de uso depende do contrato `PdfConversionGateway`, seguindo inversão de dependência.
+3. O adapter `BrowserPdfConversionGateway` executa a implementação concreta em um Web Worker.
+4. O Worker identifica PDF, PNG ou JPEG pela assinatura interna, sem depender da extensão.
+5. PDFs são processados um por vez; imagens têm as dimensões lidas antes da decodificação e são redimensionadas antes do canvas sempre que possível.
+6. O `pdf-lib` monta o PDF respeitando a ordem escolhida.
+7. O navegador inicia o download de `documentos.pdf`.
 
-O limite de 40 milhões de pixels por imagem reduz o risco de consumo excessivo de memória. Como todo o trabalho acontece no dispositivo do usuário, arquivos muito grandes ainda dependem da memória disponível no navegador.
+Para conter o uso de memória, cada arquivo é processado sequencialmente, bitmaps são fechados após o uso, o canvas é liberado a cada imagem e o Worker é encerrado ao concluir ou cancelar. O caso de uso limita cada arquivo a 256 MiB e o conjunto a 512 MiB. Imagens acima de 40 milhões de pixels são recusadas e o canvas de trabalho fica limitado a aproximadamente 8 milhões de pixels.
 
 ## Tecnologias
 
@@ -83,8 +89,22 @@ src/
 │   ├── DownloadForm.tsx
 │   ├── Footer.tsx
 │   └── Header.tsx
-├── services/
-│   └── pdf.converter.ts
+├── di/
+│   └── pdf-converter.ts
+├── modules/
+│   └── pdf-converter/
+│       ├── domain/
+│       │   └── pdf-conversion.ts
+│       ├── application/
+│       │   ├── contracts/
+│       │   │   └── pdf-conversion.gateway.ts
+│       │   └── usecases/
+│       │       └── convert-files-to-pdf.usecase.ts
+│       └── infra/
+│           └── browser/
+│               ├── browser-pdf-conversion.gateway.ts
+│               ├── document.signature.ts
+│               └── pdf.converter.worker.ts
 ├── styles/
 │   └── index.css
 ├── App.tsx

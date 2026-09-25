@@ -2,7 +2,7 @@ import type { PdfConversionGateway } from '../../application/contracts/pdf-conve
 import type {
   PdfConversionInput,
   PdfConversionProgress,
-} from '../../domain/pdf-conversion';
+} from '../../application/model/pdf-conversion';
 
 interface WorkerProgressResponse {
   type: 'progress';

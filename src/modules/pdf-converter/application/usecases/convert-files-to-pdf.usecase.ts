@@ -1,5 +1,5 @@
 import type { PdfConversionGateway } from '../contracts/pdf-conversion.gateway';
-import type { PdfConversionInput } from '../../domain/pdf-conversion';
+import type { PdfConversionInput } from '../model/pdf-conversion';
 
 const MEBIBYTE = 1024 * 1024;
 const MAX_SINGLE_FILE_BYTES = 256 * MEBIBYTE;

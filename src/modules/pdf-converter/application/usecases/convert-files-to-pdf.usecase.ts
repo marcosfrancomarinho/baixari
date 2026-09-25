@@ -6,9 +6,11 @@ const MAX_SINGLE_FILE_BYTES = 256 * MEBIBYTE;
 const MAX_TOTAL_SOURCE_BYTES = 512 * MEBIBYTE;
 
 export class ConvertFilesToPdfUseCase {
-  public constructor(
-    private readonly pdfConversionGateway: PdfConversionGateway,
-  ) {}
+  private readonly pdfConversionGateway: PdfConversionGateway;
+
+  public constructor(pdfConversionGateway: PdfConversionGateway) {
+    this.pdfConversionGateway = pdfConversionGateway;
+  }
 
   public execute(input: PdfConversionInput): Promise<Blob> {
     if (input.files.length === 0) {

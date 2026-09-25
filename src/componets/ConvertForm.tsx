@@ -44,20 +44,35 @@ export function ConvertForm() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<PdfConversionProgress | null>(null);
   const [alert, setAlert] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+  const [inputVersion, setInputVersion] = useState(0);
   const controller = useRef<AbortController | null>(null);
   const input = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => () => controller.current?.abort(), []);
 
-  const addFiles = (selected: FileList | null) => {
-    if (!selected) return;
-
-    setFiles(current => [...current, ...Array.from(selected)]);
-    setAlert(null);
-
+  const resetFileInput = () => {
     if (input.current) {
       input.current.value = '';
     }
+
+    setInputVersion(current => current + 1);
+  };
+
+  const clearFiles = () => {
+    setFiles([]);
+    setProgress(null);
+    setAlert(null);
+    resetFileInput();
+  };
+
+  const addFiles = (selected: FileList | null) => {
+    if (!selected || selected.length === 0) return;
+
+    const nextFiles = Array.from(selected);
+
+    setFiles(current => [...current, ...nextFiles]);
+    setAlert(null);
+    resetFileInput();
   };
 
   const moveFile = (index: number, offset: number) => {
@@ -128,6 +143,7 @@ export function ConvertForm() {
         <label className='flex flex-col gap-1 text-sm font-medium'>
           Selecionar arquivos
           <input
+            key={inputVersion}
             ref={input}
             type='file'
             multiple
@@ -148,7 +164,7 @@ export function ConvertForm() {
               <button
                 type='button'
                 disabled={loading}
-                onClick={() => setFiles([])}
+                onClick={clearFiles}
                 className='text-sm underline disabled:opacity-50'
               >
                 Limpar lista

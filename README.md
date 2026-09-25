@@ -2,7 +2,7 @@
 
 # BaixaRI
 
-Interface web para localizar protocolos e certidões e baixá-los nos formatos ZIP, PDF ou DOCX.
+Interface web para localizar protocolos e certidões nos formatos ZIP, PDF ou DOCX e converter arquivos enviados em um PDF único.
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=0B1120)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white)
@@ -19,6 +19,8 @@ O **BaixaRI** simplifica a consulta e o download de documentos organizados por n
 
 ZIP e PDF são recebidos prontos da API. Para DOCX, o frontend acompanha a extração de cada página em tempo real e cria o arquivo Word diretamente no navegador, sem repetir o processamento no backend.
 
+Na aba **Converter para PDF**, selecione arquivos PDF, JPG, JPEG ou PNG, ajuste a ordem e gere um PDF único. O navegador envia os arquivos como `multipart/form-data` no campo `files` para `POST /documents/convert/pdf`. A API processa os arquivos e devolve `documentos.pdf`.
+
 ## Funcionalidades
 
 - consulta por número de protocolo ou certidão;
@@ -33,6 +35,8 @@ ZIP e PDF são recebidos prontos da API. Para DOCX, o frontend acompanha a extra
 - mensagens claras de sucesso, cancelamento e erro;
 - envio do formulário pela tecla `Enter`;
 - interface responsiva construída com Tailwind CSS.
+- seleção de vários PDFs e imagens, com reordenação e remoção antes do envio;
+- cancelamento da conversão e exibição de erros retornados pela API.
 
 ## Fluxo
 
@@ -71,6 +75,7 @@ Se a extração for cancelada, a conexão é encerrada e o backend interrompe o 
 src/
 ├── componets/
 │   ├── Alert.tsx          # mensagens de retorno
+│   ├── ConvertForm.tsx    # upload e conversão para PDF
 │   ├── DownloadForm.tsx   # formulário, downloads e DOCX
 │   ├── Footer.tsx
 │   └── Header.tsx
@@ -90,7 +95,7 @@ VITE_API_URL=http://localhost:3000
 
 Sem essa variável, a aplicação usa `http://localhost:3000`.
 
-O backend precisa expor as rotas de download e extração descritas no repositório [baixari-backend](https://github.com/marcosfrancomarinho/baixari-backend).
+O backend precisa expor as rotas de download e extração e `POST /documents/convert/pdf`, descritas no repositório [baixari-backend](https://github.com/marcosfrancomarinho/baixari-backend). A conversão depende de Ghostscript instalado e acessível no servidor. O limite padrão é 50 MiB por arquivo e uma conversão simultânea por processo; essas opções podem ser configuradas no backend. O navegador precisa alcançar a URL definida em `VITE_API_URL`.
 
 ## Instalação e execução
 

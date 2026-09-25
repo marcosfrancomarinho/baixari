@@ -2,7 +2,7 @@
 
 # BaixaRI
 
-Interface web para localizar protocolos e certidões nos formatos ZIP, PDF ou DOCX e converter arquivos enviados em um PDF único.
+Interface web para localizar protocolos e certidões nos formatos ZIP, PDF ou DOCX e converter arquivos locais em um PDF único diretamente no navegador.
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=0B1120)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white)
@@ -17,85 +17,89 @@ Interface web para localizar protocolos e certidões nos formatos ZIP, PDF ou DO
 
 O **BaixaRI** simplifica a consulta e o download de documentos organizados por número. O usuário informa o número, escolhe entre **protocolo** e **certidão** e seleciona o formato desejado.
 
-ZIP e PDF são recebidos prontos da API. Para DOCX, o frontend acompanha a extração de cada página em tempo real e cria o arquivo Word diretamente no navegador, sem repetir o processamento no backend.
+ZIP e PDF de protocolos/certidões são recebidos prontos da API. Para DOCX, o frontend acompanha a extração de cada página em tempo real e cria o Word no navegador.
 
-Na aba **Converter para PDF**, selecione arquivos PDF, JPG, JPEG ou PNG, ajuste a ordem e gere um PDF único. O navegador envia os arquivos como `multipart/form-data` no campo `files` para `POST /documents/convert/pdf`. A API processa os arquivos e devolve `documentos.pdf`.
+Na aba **Converter para PDF**, arquivos PDF, JPG, JPEG e PNG são processados inteiramente no navegador. Eles não são enviados ao backend.
 
 ## Funcionalidades
 
 - consulta por número de protocolo ou certidão;
-- seleção de saída em ZIP, PDF ou DOCX;
-- download direto de ZIP e PDF;
-- consumo progressivo de eventos NDJSON para geração do DOCX;
-- criação do Word no navegador com a biblioteca `docx`;
-- organização do DOCX por arquivo e página;
-- acompanhamento do arquivo e da página em processamento;
-- cancelamento da extração com `AbortController`;
-- leitura do nome de arquivo enviado em `Content-Disposition`;
-- mensagens claras de sucesso, cancelamento e erro;
-- envio do formulário pela tecla `Enter`;
-- interface responsiva construída com Tailwind CSS.
-- seleção de vários PDFs e imagens, com reordenação e remoção antes do envio;
-- cancelamento da conversão e exibição de erros retornados pela API.
+- saída em ZIP, PDF ou DOCX;
+- consumo progressivo de NDJSON para geração de DOCX;
+- criação de Word no navegador com `docx`;
+- seleção, reordenação e remoção de vários arquivos;
+- união de PDFs no navegador com `pdf-lib`;
+- conversão de JPG/JPEG/PNG para PDF;
+- normalização de imagens com fundo branco, limite de 40 MP e lado máximo de 3000 px;
+- progresso por arquivo e cancelamento com `AbortController`;
+- nenhum upload ao servidor durante a conversão de arquivos locais;
+- interface responsiva com Tailwind CSS.
 
 ## Fluxo
 
 ```mermaid
 flowchart TD
-    A["Número, tipo e formato"] --> B["API BaixaRI"]
-    B --> C{"Formato escolhido"}
+    A["Consulta de protocolo/certidão"] --> B["API BaixaRI"]
+    B --> C{"Formato"}
     C -->|ZIP ou PDF| D["Download direto"]
-    C -->|DOCX| E["Texto progressivo via NDJSON"]
-    E --> F["Documento Word criado no navegador"]
+    C -->|DOCX| E["Texto via NDJSON"]
+    E --> F["Word criado no navegador"]
+
+    G["PDF/JPG/PNG local"] --> H["Conversão no navegador"]
+    H --> I["pdf-lib"]
+    I --> J["documentos.pdf"]
 ```
 
-## Como o DOCX é gerado
+## Conversão local para PDF
 
-1. O frontend chama `/protocol/:number/text` ou `/certificate/:number/text`.
-2. O backend envia um evento para cada página processada.
-3. A interface atualiza o progresso conforme os eventos chegam.
-4. Ao receber `done`, a biblioteca `docx` monta o arquivo Word.
-5. O navegador inicia o download como `protocolo_<número>.docx` ou `certidao_<número>.docx`.
+A conversão não usa `VITE_API_URL` e não chama uma rota de upload.
 
-Se a extração for cancelada, a conexão é encerrada e o backend interrompe o fluxo com segurança.
+1. O frontend identifica PDF, PNG ou JPEG pela assinatura do arquivo.
+2. PDFs têm suas páginas copiadas para o documento final.
+3. Imagens são redimensionadas quando necessário, recebem fundo branco e são convertidas para JPEG.
+4. O `pdf-lib` monta o PDF respeitando a ordem escolhida.
+5. O navegador inicia o download de `documentos.pdf`.
+
+O limite de 40 milhões de pixels por imagem reduz o risco de consumo excessivo de memória. Como todo o trabalho acontece no dispositivo do usuário, arquivos muito grandes ainda dependem da memória disponível no navegador.
 
 ## Tecnologias
 
-- **React 19** — componentes e estado da interface;
-- **TypeScript 6** — tipagem estática;
-- **Vite 8** — servidor de desenvolvimento e build;
-- **Tailwind CSS 4** — estilização;
-- **docx** — criação do documento Word no navegador;
-- **Fetch API + Streams** — leitura progressiva de NDJSON;
-- **ESLint** — análise estática do código.
+- **React 19**
+- **TypeScript 6**
+- **Vite 8**
+- **Tailwind CSS 4**
+- **docx**
+- **pdf-lib**
+- **Fetch API + Streams**
+- **ESLint**
 
 ## Estrutura
 
 ```text
 src/
 ├── componets/
-│   ├── Alert.tsx          # mensagens de retorno
-│   ├── ConvertForm.tsx    # upload e conversão para PDF
-│   ├── DownloadForm.tsx   # formulário, downloads e DOCX
+│   ├── Alert.tsx
+│   ├── ConvertForm.tsx
+│   ├── DownloadForm.tsx
 │   ├── Footer.tsx
 │   └── Header.tsx
+├── services/
+│   └── pdf.converter.ts
 ├── styles/
-│   └── index.css          # entrada do Tailwind CSS
+│   └── index.css
 ├── App.tsx
 └── main.tsx
 ```
 
 ## Configuração
 
-Informe a URL do backend em um arquivo `.env.local`:
+Informe a URL do backend em `.env.local`:
 
 ```env
 VITE_API_URL=http://localhost:3000
 ```
 
-Sem essa variável, a aplicação usa `http://localhost:3000`.
-
-O backend precisa expor as rotas de download e extração e `POST /documents/convert/pdf`, descritas no repositório [baixari-backend](https://github.com/marcosfrancomarinho/baixari-backend). A conversão depende de Ghostscript instalado e acessível no servidor. O limite padrão é 50 MiB por arquivo e uma conversão simultânea por processo; essas opções podem ser configuradas no backend. O navegador precisa alcançar a URL definida em `VITE_API_URL`.
+Essa URL é usada somente nas consultas e na extração de texto de protocolos/certidões. A aba de conversão de arquivos locais funciona sem enviar os documentos ao backend.
 
 ## Instalação e execução
 
@@ -103,7 +107,7 @@ O backend precisa expor as rotas de download e extração e `POST /documents/con
 
 - Node.js 22 ou superior;
 - npm ou Yarn;
-- BaixaRI Backend em execução.
+- BaixaRI Backend para as funcionalidades de consulta.
 
 ```bash
 git clone https://github.com/marcosfrancomarinho/baixari.git
@@ -112,25 +116,14 @@ npm install
 npm run dev
 ```
 
-O Vite exibirá o endereço local da aplicação no terminal.
-
-### Scripts
+## Scripts
 
 | Comando | Descrição |
 |---|---|
 | `npm run dev` | inicia o servidor de desenvolvimento |
-| `npm run build` | verifica os tipos e gera o build de produção |
+| `npm run build` | verifica tipos e gera o build |
 | `npm run lint` | executa o ESLint |
-| `npm run preview` | visualiza localmente o build gerado |
-
-## Build de produção
-
-```bash
-npm run build
-npm run preview
-```
-
-Os arquivos finais são gerados em `dist/`.
+| `npm run preview` | visualiza o build |
 
 ## Autor
 
